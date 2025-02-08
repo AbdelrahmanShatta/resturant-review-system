@@ -17,6 +17,13 @@ class ApiService {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
         },
+      ).timeout(
+        const Duration(seconds: 10),
+        onTimeout: () {
+          throw Exception(
+            'Connection timeout. Please check if the backend server is running.'
+          );
+        },
       );
 
       developer.log('Leaderboard response status: ${response.statusCode}');
@@ -26,10 +33,13 @@ class ApiService {
         final List<dynamic> data = json.decode(response.body);
         return data.map((json) => Restaurant.fromJson(json)).toList();
       } else {
-        throw Exception('Failed to load leaderboard: ${response.statusCode} - ${response.body}');
+        throw _handleErrorResponse(response);
       }
     } catch (e, stackTrace) {
       developer.log('Error fetching leaderboard', error: e, stackTrace: stackTrace);
+      if (e is http.ClientException) {
+        throw Exception('Cannot connect to server. Please check if the backend is running.');
+      }
       rethrow;
     }
   }
@@ -42,16 +52,24 @@ class ApiService {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
         },
+      ).timeout(
+        const Duration(seconds: 10),
+        onTimeout: () {
+          throw Exception('Connection timeout. Please try again.');
+        },
       );
 
       if (response.statusCode == 200) {
         final List<dynamic> data = json.decode(response.body);
         return data.map((json) => Review.fromJson(json)).toList();
       } else {
-        throw Exception('Failed to load reviews: ${response.statusCode} - ${response.body}');
+        throw _handleErrorResponse(response);
       }
     } catch (e, stackTrace) {
       developer.log('Error fetching reviews', error: e, stackTrace: stackTrace);
+      if (e is http.ClientException) {
+        throw Exception('Cannot connect to server. Please check if the backend is running.');
+      }
       rethrow;
     }
   }
@@ -73,16 +91,40 @@ class ApiService {
           'text': text,
           'userId': userId,
         }),
+      ).timeout(
+        const Duration(seconds: 10),
+        onTimeout: () {
+          throw Exception('Connection timeout. Please try again.');
+        },
       );
 
       if (response.statusCode == 200) {
         return Review.fromJson(json.decode(response.body));
       } else {
-        throw Exception('Failed to submit review: ${response.statusCode} - ${response.body}');
+        throw _handleErrorResponse(response);
       }
     } catch (e, stackTrace) {
       developer.log('Error submitting review', error: e, stackTrace: stackTrace);
+      if (e is http.ClientException) {
+        throw Exception('Cannot connect to server. Please check if the backend is running.');
+      }
       rethrow;
+    }
+  }
+
+  Exception _handleErrorResponse(http.Response response) {
+    try {
+      final errorData = json.decode(response.body);
+      return Exception(errorData['error'] ?? 'Unknown error occurred');
+    } catch (_) {
+      switch (response.statusCode) {
+        case 404:
+          return Exception('Resource not found');
+        case 500:
+          return Exception('Server error. Please try again later.');
+        default:
+          return Exception('Error: ${response.statusCode}');
+      }
     }
   }
 } 

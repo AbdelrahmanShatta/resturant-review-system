@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'screens/home_screen.dart';
+import 'routes/app_router.dart';
 import 'services/api_service.dart';
+import 'theme/app_theme.dart';
 
 void main() {
   runApp(const MyApp());
@@ -16,11 +17,10 @@ class MyApp extends StatelessWidget {
       create: (_) => ApiService(),
       child: MaterialApp(
         title: 'Restaurant Reviews',
-        theme: ThemeData(
-          primarySwatch: Colors.blue,
-          useMaterial3: true,
-        ),
-        home: const HomeScreen(),
+        theme: AppTheme.lightTheme,
+        debugShowCheckedModeBanner: false,
+        initialRoute: AppRouter.login,
+        onGenerateRoute: AppRouter.generateRoute,
       ),
     );
   }
