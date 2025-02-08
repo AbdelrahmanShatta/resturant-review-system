@@ -1,16 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+/// Defines the application's theme including colors, text styles, and component themes.
+/// This class provides a centralized location for all theme-related configurations.
 class AppTheme {
-  static const primaryColor = Color(0xFF1E88E5);
-  static const secondaryColor = Color(0xFF26A69A);
-  static const backgroundColor = Color(0xFFF5F5F7);
-  static const cardColor = Colors.white;
-  static const textColor = Color(0xFF2D3142);
-  static const subtitleColor = Color(0xFF9E9E9E);
-  static const errorColor = Color(0xFFE57373);
-  static const successColor = Color(0xFF81C784);
+  // Private constructor to prevent instantiation
+  AppTheme._();
 
+  // Color constants for the application theme
+  static const Color primaryColor = Color(0xFF1E88E5);
+  static const Color secondaryColor = Color(0xFF26A69A);
+  static const Color backgroundColor = Color(0xFFF5F5F7);
+  static const Color cardColor = Colors.white;
+  static const Color textColor = Color(0xFF2D3142);
+  static const Color subtitleColor = Color(0xFF9E9E9E);
+  static const Color errorColor = Color(0xFFE57373);
+  static const Color successColor = Color(0xFF81C784);
+
+  /// Returns the light theme configuration for the application.
+  /// This includes settings for colors, text styles, and component themes.
   static ThemeData get lightTheme {
     return ThemeData(
       useMaterial3: true,
@@ -19,6 +27,8 @@ class AppTheme {
         background: backgroundColor,
       ),
       scaffoldBackgroundColor: backgroundColor,
+      
+      // Card theme configuration
       cardTheme: const CardTheme(
         color: cardColor,
         elevation: 0,
@@ -26,6 +36,8 @@ class AppTheme {
           borderRadius: BorderRadius.all(Radius.circular(16)),
         ),
       ),
+      
+      // Text theme configuration using Google Fonts
       textTheme: GoogleFonts.interTextTheme().copyWith(
         headlineLarge: const TextStyle(
           color: textColor,
@@ -42,6 +54,8 @@ class AppTheme {
           color: subtitleColor,
         ),
       ),
+      
+      // AppBar theme configuration
       appBarTheme: AppBarTheme(
         backgroundColor: cardColor,
         elevation: 0,
@@ -55,26 +69,21 @@ class AppTheme {
           color: textColor,
         ),
       ),
+      
+      // Input decoration theme configuration
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: backgroundColor,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide.none,
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide.none,
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: primaryColor, width: 2),
-        ),
+        border: _buildInputBorder(),
+        enabledBorder: _buildInputBorder(),
+        focusedBorder: _buildInputBorder(true),
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 16,
           vertical: 16,
         ),
       ),
+      
+      // Elevated button theme configuration
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           backgroundColor: primaryColor,
@@ -89,6 +98,16 @@ class AppTheme {
           ),
         ),
       ),
+    );
+  }
+
+  /// Helper method to build consistent input borders
+  static OutlineInputBorder _buildInputBorder([bool isFocused = false]) {
+    return OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: isFocused 
+          ? const BorderSide(color: primaryColor, width: 2)
+          : BorderSide.none,
     );
   }
 } 
