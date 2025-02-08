@@ -1,0 +1,75 @@
+name: OpenHands Code Review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  code-review:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.12'
+
+      - name: Install OpenHands
+        run: |
+          python -m pip install --upgrade pip
+          pip install openhands-ai
+
+      - name: Create .openhands_instructions
+        run: |
+          cat > .openhands_instructions << 'EOL'
+          # OpenHands Custom Instructions for Code Quality Review
+
+          **Role:** You are an expert code reviewer.  
+          **Task:** Evaluate pull requests based on our established code standards.
+
+          **Standard Code Template:**  
+          1. Code must follow our naming conventions (e.g., snake_case for Python, camelCase for JavaScript).  
+          2. Indentation and formatting must be consistent.  
+          3. There should be clear inline comments and proper documentation for non-trivial logic.  
+          4. No redundant or dead code is allowed.  
+          5. The code should pass all automated tests and static analysis checks.
+
+          **Response Format:**  
+          - If the PR fully adheres to the above standards, output exactly: `GOOD`.  
+          - If the PR deviates from these standards in any significant way, output exactly: `BAD`.
+          EOL
+
+      - name: Run OpenHands Review
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_USERNAME: ${{ github.repository_owner }}
+          LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+          LLM_MODEL: "anthropic/claude-3-5-sonnet-20241022"
+        run: |
+          # Use OpenHands resolver to review the PR
+          python -m openhands.resolver.resolve_issue \
+            --repo ${{ github.repository }} \
+            --issue-number ${{ github.event.pull_request.number }} \
+            --issue-type pr
+
+          # Check the resolver output and handle auto-merge
+          if grep -q '"success":true' output/output.jsonl; then
+            gh pr comment ${{ github.event.pull_request.number }} --body "✅ OpenHands Code Review: All files meet our code quality standards. Auto-merging PR."
+            gh pr review ${{ github.event.pull_request.number }} --approve -b "Code quality standards met."
+            
+            # Enable auto-merge with normal merge strategy
+            gh pr merge ${{ github.event.pull_request.number }} --auto --merge
+            
+            # Wait for checks to pass and merge immediately if possible
+            gh pr merge ${{ github.event.pull_request.number }} --merge
+          else
+            gh pr comment ${{ github.event.pull_request.number }} --body "❌ OpenHands Code Review: Some files do not meet our code quality standards. Please review and update according to the guidelines."
+            gh pr review ${{ github.event.pull_request.number }} --request-changes -b "Code quality standards not met. Please address the issues."
+          fi
