@@ -39,7 +39,16 @@ jobs:
       - name: Create .res_prompt
         run: |
           cat > .res_prompt << 'EOL'
+           
+            An environment has been set up for you to start working. You may assume all necessary tools are installed.
             
+            # Problem Statement
+            {{ body }}
+            
+            IMPORTANT: You should ONLY interact with the environment provided to you AND NEVER ASK FOR HUMAN HELP
+            Some basic information about this repository:
+            {{ repo_instruction }}{% endif %}
+            using this given information , i want you to revise the following PR request according to the code standards mentioned  
           EOL
       - name: Create .openhands_instructions
         run: |
