@@ -74,7 +74,7 @@ jobs:
             --repo ${{ github.repository }} \
             --issue-number ${{ github.event.pull_request.number }} \
             --issue-type pr \
-            --prompt-file res_prompt
+            --prompt-file .res_prompt
 
           # Check the resolver output and handle auto-merge
           if grep -q '"success":true' output/output.jsonl; then
