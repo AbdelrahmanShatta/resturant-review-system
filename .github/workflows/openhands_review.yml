@@ -36,6 +36,9 @@ jobs:
 
       - name: Create .openhands_instructions
         run: |
+          cat > .res_prompt << 'EOL'
+            
+          EOL
           cat > .openhands_instructions << 'EOL'
           # OpenHands Custom Instructions for Code Quality Review
 
