@@ -66,9 +66,12 @@ jobs:
         run: |
           # Use OpenHands in headless mode to review the PR
           review_output=$(python -m openhands.core.main \
-            -t "Review PR #${{ github.event.pull_request.number }} in repository ${{ github.repository }} according to the instructions in .openhands_instructions file" \
+            -t "Review PR #${{ github.event.pull_request.number }} in repository ${{ github.repository }} according to the instructions in .openhands_instructions file. Output GOOD if the code meets all standards, or BAD if it doesn't. No other output is needed." \
             --eval-output-dir ./eval_output \
-            --no-auto-continue)
+            --no-auto-continue \
+            -i 1 \
+            -b 1 \
+            --eval-n-limit 1)
 
           # Check the review output and handle auto-merge
           if echo "$review_output" | grep -q "GOOD"; then
