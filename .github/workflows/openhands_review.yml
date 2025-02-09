@@ -44,6 +44,7 @@ jobs:
           **Response Format:**  
           - If the PR fully adheres to the above standards, output exactly: `GOOD`.  
           - If the PR deviates from these standards in any significant way, output exactly: `BAD`.
+          DO NOT FIX THE CODE YOURSELF, JUST ACCEPT OR REJECT THE PR ACCORDING TO TIS QUALITY AND STANDARDS
           EOL
 
       - name: Run OpenHands Review
