@@ -63,7 +63,7 @@ jobs:
           LLM_MODEL: "anthropic/claude-3-5-sonnet-20241022"
         run: |
           # Use OpenHands in headless mode to review the PR
-          python -m openhands.headless.review \
+          python -m openhands.cli.headless \
             --repo ${{ github.repository }} \
             --pr ${{ github.event.pull_request.number }} \
             --instructions .openhands_instructions \
