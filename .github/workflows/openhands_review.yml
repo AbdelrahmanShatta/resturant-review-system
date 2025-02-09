@@ -61,12 +61,12 @@ jobs:
           GITHUB_USERNAME: ${{ github.repository_owner }}
           LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
           LLM_MODEL: "anthropic/claude-3-5-sonnet-20241022"
+          LOG_ALL_EVENTS: "true"
+          WORKSPACE_BASE: ${{ github.workspace }}
         run: |
           # Use OpenHands in headless mode to review the PR
-          python -m openhands.cli.headless \
-            --repo ${{ github.repository }} \
-            --pr ${{ github.event.pull_request.number }} \
-            --instructions .openhands_instructions \
+          python -m openhands.core.main \
+            -t "Review PR #${{ github.event.pull_request.number }} in repository ${{ github.repository }} according to the instructions in .openhands_instructions file" \
             --output-file review_output.json
 
           # Check the review output and handle auto-merge
