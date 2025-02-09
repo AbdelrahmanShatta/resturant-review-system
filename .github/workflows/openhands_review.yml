@@ -21,6 +21,14 @@ jobs:
         with:
           python-version: '3.12'
 
+      - name: Cache dependencies
+        uses: actions/cache@v3
+        with:
+          path: ${{ env.pythonLocation }}
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
       - name: Install OpenHands
         run: |
           python -m pip install --upgrade pip
@@ -44,6 +52,7 @@ jobs:
           **Response Format:**  
           - If the PR fully adheres to the above standards, output exactly: `GOOD`.  
           - If the PR deviates from these standards in any significant way, output exactly: `BAD`.
+          DO NOT FIX THE CODE YOURSELF, JUST ACCEPT OR REJECT THE PR ACCORDING TO TIS QUALITY AND STANDARDS
           EOL
 
       - name: Run OpenHands Review
