@@ -34,11 +34,15 @@ jobs:
           python -m pip install --upgrade pip
           pip install openhands-ai
 
-      - name: Create .openhands_instructions
+
+    
+      - name: Create .res_prompt
         run: |
           cat > .res_prompt << 'EOL'
             
           EOL
+      - name: Create .openhands_instructions
+        run: |
           cat > .openhands_instructions << 'EOL'
           # OpenHands Custom Instructions for Code Quality Review
 
