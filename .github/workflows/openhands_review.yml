@@ -65,12 +65,13 @@ jobs:
           WORKSPACE_BASE: ${{ github.workspace }}
         run: |
           # Use OpenHands in headless mode to review the PR
-          python -m openhands.core.main \
+          review_output=$(python -m openhands.core.main \
             -t "Review PR #${{ github.event.pull_request.number }} in repository ${{ github.repository }} according to the instructions in .openhands_instructions file" \
-            --output-file review_output.json
+            --eval-output-dir ./eval_output \
+            --no-auto-continue)
 
           # Check the review output and handle auto-merge
-          if [ -f review_output.json ] && grep -q '"quality": "GOOD"' review_output.json; then
+          if echo "$review_output" | grep -q "GOOD"; then
             gh pr comment ${{ github.event.pull_request.number }} --body "✅ OpenHands Code Review: All files meet our code quality standards. Auto-merging PR."
             gh pr review ${{ github.event.pull_request.number }} --approve -b "Code quality standards met."
             
