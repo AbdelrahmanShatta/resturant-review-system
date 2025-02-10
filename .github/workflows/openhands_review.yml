@@ -40,15 +40,21 @@ jobs:
         run: |
           cat > .res_prompt << 'EOL'
            
-            An environment has been set up for you to start working. You may assume all necessary tools are installed.
-            
-            # Problem Statement
-            {{ body }}
-            
-            IMPORTANT: You should ONLY interact with the environment provided to you AND NEVER ASK FOR HUMAN HELP
-            Some basic information about this repository:
-            {{ repo_instruction }}{% endif %}
-            using this given information , i want you to revise the following PR request according to the code standards mentioned  
+
+          Please fix the following issue for the repository in /workspace.
+          An environment has been set up for you to start working. You may assume all necessary tools are installed.
+          
+          # Problem Statement
+          {{ body }}
+          
+          IMPORTANT: You should ONLY interact with the environment provided to you AND NEVER ASK FOR HUMAN HELP.
+          You SHOULD INCLUDE PROPER INDENTATION in your edit commands.{% if repo_instruction %}
+          
+          Some basic information about this repository:
+          {{ repo_instruction }}{% endif %}
+          
+          review the PR request and if it meets the requirements do good or bad
+
           EOL
       - name: Create .openhands_instructions
         run: |
