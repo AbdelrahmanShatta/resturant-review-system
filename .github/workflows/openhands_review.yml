@@ -138,6 +138,8 @@ jobs:
           fi
 
       - name: Process review results
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           # Read the quality report
           QUALITY_REPORT=$(cat quality_report.md)
