@@ -27,7 +27,27 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install openhands-ai pylint black mypy ruff
+          pip install openhands-ai
+          pip install -r requirements.txt
+          pip install -e .
+
+      - name: Run tests
+        id: run_tests
+        continue-on-error: true
+        run: |
+          echo "### Test Results" > quality_report.md
+          echo "" >> quality_report.md
+          echo "#### Pytest" >> quality_report.md
+          echo '```' >> quality_report.md
+          if pytest tests/ -v --cov=utils --cov-report=term-missing; then
+            echo "✅ All tests passed" >> quality_report.md
+            echo "TESTS_PASSED=true" >> $GITHUB_ENV
+          else
+            echo "❌ Some tests failed" >> quality_report.md
+            echo "TESTS_PASSED=false" >> $GITHUB_ENV
+          fi
+          echo '```' >> quality_report.md
+          echo "" >> quality_report.md
 
       - name: Run code quality checks
         id: quality_checks
@@ -142,7 +162,7 @@ jobs:
           # Read the quality report
           QUALITY_REPORT=$(cat quality_report.md)
           
-          if [ "$BLACK_PASSED" = "true" ] && [ "$RUFF_PASSED" = "true" ] && [ "$MYPY_PASSED" = "true" ] && [ "$OPENHANDS_PASSED" = "true" ]; then
+          if [ "$TESTS_PASSED" = "true" ] && [ "$BLACK_PASSED" = "true" ] && [ "$RUFF_PASSED" = "true" ] && [ "$MYPY_PASSED" = "true" ] && [ "$OPENHANDS_PASSED" = "true" ]; then
             # All checks passed - approve and auto-merge
             gh pr comment "${{ github.event.pull_request.number }}" --body "✅ **Code Quality Review Passed**
 
