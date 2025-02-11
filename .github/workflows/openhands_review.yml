@@ -34,13 +34,6 @@ jobs:
           python -m pip install --upgrade pip
           pip install openhands-ai
 
-
-    
-      - name: Create .res_prompt
-        run: |
-          cat > .res_prompt << 'EOL'
-            
-          EOL
       - name: Create .openhands_instructions
         run: |
           cat > .openhands_instructions << 'EOL'
@@ -62,22 +55,26 @@ jobs:
           DO NOT FIX THE CODE YOURSELF, JUST ACCEPT OR REJECT THE PR ACCORDING TO TIS QUALITY AND STANDARDS
           EOL
 
-      - name: Run OpenHands Review
+      - name: Run OpenHands Review in Headless Mode
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_USERNAME: ${{ github.repository_owner }}
           LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
           LLM_MODEL: "anthropic/claude-3-5-sonnet-20241022"
+          LOG_ALL_EVENTS: "true"
+          WORKSPACE_BASE: ${{ github.workspace }}
         run: |
-          # Use OpenHands resolver to review the PR
-          python -m openhands.resolver.resolve_issue \
-            --repo ${{ github.repository }} \
-            --issue-number ${{ github.event.pull_request.number }} \
-            --issue-type pr \
-            --prompt-file .res_prompt
+          # Use OpenHands in headless mode to review the PR
+          review_output=$(python -m openhands.core.main \
+            -t "Review PR #${{ github.event.pull_request.number }} in repository ${{ github.repository }} according to the instructions in .openhands_instructions file. Output GOOD if the code meets all standards, or BAD if it doesn't.NEVER ASK A USER FOR INPUT, No other output is needed." \
+            --eval-output-dir ./eval_output \
+            --no-auto-continue \
+            -i 50 \
+            -b 50 \
+            --eval-n-limit 50)
 
-          # Check the resolver output and handle auto-merge
-          if grep -q '"success":true' output/output.jsonl; then
+          # Check the review output and handle auto-merge
+          if echo "$review_output" | grep -q "GOOD"; then
             gh pr comment ${{ github.event.pull_request.number }} --body "✅ OpenHands Code Review: All files meet our code quality standards. Auto-merging PR."
             gh pr review ${{ github.event.pull_request.number }} --approve -b "Code quality standards met."
             
