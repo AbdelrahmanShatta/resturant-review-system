@@ -1,11 +1,11 @@
-name: OpenHands Code Review
+name: OpenHands Code Quality Review
 
 on:
   pull_request:
     types: [opened, synchronize, reopened]
 
 jobs:
-  code-review:
+  code-quality-review:
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -14,76 +14,154 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+          cache: 'pip'
 
-      - name: Cache dependencies
-        uses: actions/cache@v3
-        with:
-          path: ${{ env.pythonLocation }}
-          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
-          restore-keys: |
-            ${{ runner.os }}-pip-
-
-      - name: Install OpenHands
+      - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install openhands-ai
+          pip install openhands-ai pylint black mypy ruff
 
-      - name: Create .openhands_instructions
+      - name: Run code quality checks
+        id: quality_checks
+        continue-on-error: true
+        run: |
+          # Run various code quality tools and store their output
+          {
+            echo "### Code Quality Analysis Results" > quality_report.md
+            echo "" >> quality_report.md
+            
+            # Run Black for code formatting
+            echo "#### Black (Code Formatting)" >> quality_report.md
+            echo '```' >> quality_report.md
+            if black --check --diff .; then
+              echo "✅ Code formatting is consistent with Black standards" >> quality_report.md
+              echo "BLACK_PASSED=true" >> $GITHUB_ENV
+            else
+              echo "❌ Code formatting issues found" >> quality_report.md
+              black --check --diff . >> quality_report.md 2>&1
+              echo "BLACK_PASSED=false" >> $GITHUB_ENV
+            fi
+            echo '```' >> quality_report.md
+            echo "" >> quality_report.md
+            
+            # Run Ruff for fast Python linting
+            echo "#### Ruff (Fast Python Linter)" >> quality_report.md
+            echo '```' >> quality_report.md
+            if ruff check .; then
+              echo "✅ No issues found by Ruff" >> quality_report.md
+              echo "RUFF_PASSED=true" >> $GITHUB_ENV
+            else
+              echo "❌ Ruff found code quality issues" >> quality_report.md
+              ruff check . >> quality_report.md 2>&1
+              echo "RUFF_PASSED=false" >> $GITHUB_ENV
+            fi
+            echo '```' >> quality_report.md
+            echo "" >> quality_report.md
+            
+            # Run MyPy for type checking
+            echo "#### MyPy (Type Checking)" >> quality_report.md
+            echo '```' >> quality_report.md
+            if mypy . --ignore-missing-imports; then
+              echo "✅ Type checking passed" >> quality_report.md
+              echo "MYPY_PASSED=true" >> $GITHUB_ENV
+            else
+              echo "❌ Type checking issues found" >> quality_report.md
+              mypy . --ignore-missing-imports >> quality_report.md 2>&1
+              echo "MYPY_PASSED=false" >> $GITHUB_ENV
+            fi
+            echo '```' >> quality_report.md
+          } || true
+
+      - name: Create OpenHands instructions
         run: |
           cat > .openhands_instructions << 'EOL'
-          # OpenHands Custom Instructions for Code Quality Review
+          # OpenHands Code Quality Review Instructions
 
-          **Role:** You are an expert code reviewer.  
-          **Task:** Evaluate pull requests based on our established code standards.
+          **Role:** You are a senior code quality analyst responsible for evaluating pull requests.
 
-          **Standard Code Template:**  
-          1. Code must follow our naming conventions (e.g., snake_case for Python, camelCase for JavaScript).  
-          2. Indentation and formatting must be consistent.  
-          3. There should be clear inline comments and proper documentation for non-trivial logic.  
-          4. No redundant or dead code is allowed.  
-          5. The code should pass all automated tests and static analysis checks.
+          **Task:** Review the code changes and quality check results to determine if the PR meets our standards.
 
-          **Response Format:**  
-          - If the PR fully adheres to the above standards, output exactly: `GOOD`.  
-          - If the PR deviates from these standards in any significant way, output exactly: `BAD`.
-          DO NOT FIX THE CODE YOURSELF, JUST ACCEPT OR REJECT THE PR ACCORDING TO TIS QUALITY AND STANDARDS
+          **Code Quality Standards:**
+          1. Code follows consistent naming conventions and style guidelines
+          2. No code smells or anti-patterns are present
+          3. Functions and classes are well-documented with clear purpose
+          4. Code is DRY (Don't Repeat Yourself) and follows SOLID principles
+          5. All automated quality checks (Black, Ruff, MyPy) must pass
+          6. No security vulnerabilities or performance bottlenecks
+          7. Tests are present for new functionality (if applicable)
+
+          **Response Format:**
+          - Output exactly "GOOD" if the code meets ALL standards
+          - Output exactly "BAD" if ANY standard is not met
+          DO NOT provide explanations or suggestions - only output GOOD or BAD
           EOL
 
-      - name: Run OpenHands Review in Headless Mode
+      - name: Run OpenHands Review
+        id: openhands_review
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITHUB_USERNAME: ${{ github.repository_owner }}
           LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
-          LLM_MODEL: "anthropic/claude-3-5-sonnet-20241022"
+          LLM_MODEL: "anthropic/claude-3-sonnet"
           LOG_ALL_EVENTS: "true"
-          WORKSPACE_BASE: ${{ github.workspace }}
         run: |
-          # Use OpenHands in headless mode to review the PR
-          review_output=$(python -m openhands.core.main \
-            -t "Review PR #${{ github.event.pull_request.number }} in repository ${{ github.repository }} according to the instructions in .openhands_instructions file. Output GOOD if the code meets all standards, or BAD if it doesn't.NEVER ASK A USER FOR INPUT, No other output is needed." \
-            --eval-output-dir ./eval_output \
-            --no-auto-continue \
-            -i 50 \
-            -b 50 \
-            --eval-n-limit 50)
-
-          # Check the review output and handle auto-merge
-          if echo "$review_output" | grep -q "GOOD"; then
-            gh pr comment ${{ github.event.pull_request.number }} --body "✅ OpenHands Code Review: All files meet our code quality standards. Auto-merging PR."
-            gh pr review ${{ github.event.pull_request.number }} --approve -b "Code quality standards met."
+          # Get the quality check results
+          CHECKS_PASSED=true
+          if [ "$BLACK_PASSED" = "false" ] || [ "$RUFF_PASSED" = "false" ] || [ "$MYPY_PASSED" = "false" ]; then
+            CHECKS_PASSED=false
+          fi
+          
+          if [ "$CHECKS_PASSED" = "true" ]; then
+            # Only run OpenHands review if automated checks pass
+            review_output=$(python -m openhands.core.main \
+              -t "Review PR #${{ github.event.pull_request.number }} in ${{ github.repository }} according to .openhands_instructions. Output only GOOD or BAD." \
+              --eval-output-dir ./eval_output \
+              --no-auto-continue \
+              -i 50 \
+              -b 50 \
+              --eval-n-limit 50)
             
-            # Enable auto-merge with normal merge strategy
-            gh pr merge ${{ github.event.pull_request.number }} --auto --merge
-            
-            # Wait for checks to pass and merge immediately if possible
-            gh pr merge ${{ github.event.pull_request.number }} --merge
+            if echo "$review_output" | grep -q "GOOD"; then
+              echo "OPENHANDS_PASSED=true" >> $GITHUB_ENV
+            else
+              echo "OPENHANDS_PASSED=false" >> $GITHUB_ENV
+            fi
           else
-            gh pr comment ${{ github.event.pull_request.number }} --body "❌ OpenHands Code Review: Some files do not meet our code quality standards. Please review and update according to the guidelines."
-            gh pr review ${{ github.event.pull_request.number }} --request-changes -b "Code quality standards not met. Please address the issues."
+            echo "OPENHANDS_PASSED=false" >> $GITHUB_ENV
+          fi
+
+      - name: Process review results
+        run: |
+          # Read the quality report
+          QUALITY_REPORT=$(cat quality_report.md)
+          
+          if [ "$BLACK_PASSED" = "true" ] && [ "$RUFF_PASSED" = "true" ] && [ "$MYPY_PASSED" = "true" ] && [ "$OPENHANDS_PASSED" = "true" ]; then
+            # All checks passed - approve and auto-merge
+            gh pr comment "${{ github.event.pull_request.number }}" --body "✅ **Code Quality Review Passed**
+
+            All automated checks and OpenHands review passed. Auto-merging PR.
+
+            $QUALITY_REPORT"
+            
+            gh pr review "${{ github.event.pull_request.number }}" --approve -b "All code quality standards met."
+            
+            # Enable auto-merge
+            gh pr merge "${{ github.event.pull_request.number }}" --auto --merge
+            gh pr merge "${{ github.event.pull_request.number }}" --merge
+          else
+            # Some checks failed - request changes
+            gh pr comment "${{ github.event.pull_request.number }}" --body "❌ **Code Quality Review Failed**
+
+            Some quality checks did not pass. Please review the report below and make necessary changes.
+
+            $QUALITY_REPORT"
+            
+            gh pr review "${{ github.event.pull_request.number }}" --request-changes -b "Code quality standards not met. See the detailed report in the PR comments."
           fi
