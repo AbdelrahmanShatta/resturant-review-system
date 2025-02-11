@@ -53,7 +53,7 @@ jobs:
           Some basic information about this repository:
           {{ repo_instruction }}{% endif %}
           
-          review the PR request and if it meets the requirements do good or bad
+        
 
           EOL
       - name: Create .openhands_instructions
